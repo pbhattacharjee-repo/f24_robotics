@@ -32,7 +32,7 @@ from webots_ros2_driver.wait_for_controller_connection import WaitForControllerC
 
 
 def generate_launch_description():
-    package_dir = get_package_share_directory('webots_ros2_homework1_python')
+    package_dir = get_package_share_directory('webots_apriltags')
     world = LaunchConfiguration('world')
     mode = LaunchConfiguration('mode')
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
@@ -78,6 +78,8 @@ def generate_launch_description():
     )
     ros_control_spawners = [diffdrive_controller_spawner, joint_state_broadcaster_spawner]
 
+
+
     robot_description_path = os.path.join(package_dir, 'resource', 'turtlebot_webots.urdf')
     ros2_control_params = os.path.join(package_dir, 'resource', 'ros2control.yml')
     mappings = [('/diffdrive_controller/cmd_vel_unstamped', '/cmd_vel'), ('/diffdrive_controller/odom', '/odom')]
@@ -98,14 +100,31 @@ def generate_launch_description():
         target_driver=turtlebot_driver,
         nodes_to_start= ros_control_spawners
     )
+    
+    rviz_config_dir = os.path.join(get_package_share_directory('webots_apriltags'),
+                                   'rviz', 'turtlebot3_apriltags.rviz')
 
-
+    apriltag_node = Node(
+        package='apriltag_ros',
+        executable='apriltag_node',
+        name='apriltag_node',
+        remappings=[
+            ('/apriltag/image_rect', '/v4l2/image_rect'),
+            ('/apriltag/camera_info', '/v4l2/camera_info')
+        ],
+        parameters=[
+            {'family': '36h11'},
+            {'size': 0.173},
+            {'max_hamming': 0},
+        ],
+        output='screen',
+    )
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'world',
-            default_value='f23_robotics_1.wbt',
-            description='Choose one of the world files from `/webots_ros2_turtlebot/world` directory'
+            default_value='turtlebot3_apriltags.wbt',
+            description='Choose one of the world files from /webots_ros2_turtlebot/world directory'
         ),
         DeclareLaunchArgument(
             'mode',
@@ -121,6 +140,8 @@ def generate_launch_description():
 
         turtlebot_driver,
 
+        apriltag_node,
+
         # This action will kill all nodes once the Webots simulation has exited
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
@@ -130,4 +151,11 @@ def generate_launch_description():
                 ],
             )
         ),
-    ])
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', rviz_config_dir],
+            parameters=[{'use_sim_time': use_sim_time}],
+            output='screen'),
+    ])
