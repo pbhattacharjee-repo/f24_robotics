@@ -124,7 +124,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'world',
             default_value='turtlebot3_apriltags.wbt',
-            description='Choose one of the world files from /webots_ros2_turtlebot/world directory'
+            description='Choose one of the world files from `/webots_ros2_turtlebot/world` directory'
         ),
         DeclareLaunchArgument(
             'mode',
@@ -158,4 +158,4 @@ def generate_launch_description():
             arguments=['-d', rviz_config_dir],
             parameters=[{'use_sim_time': use_sim_time}],
             output='screen'),
-    ])
+    ])
