@@ -20,8 +20,8 @@ LEFT_SIDE_INDEX = 90
 
 class RandomWalk(Node):
 
-    def _init_(self):
-        super()._init_('random_walk_node')
+    def __init__(self):
+        super().__init__('random_walk_node')
         self.scan_cleaned = []
         self.stall = False
         self.turtlebot_moving = False
@@ -130,5 +130,5 @@ def main(args=None):
     random_walk_node.destroy_node()
     rclpy.shutdown()
 
-if _name_ == '_main_':
-    main()
+if __name__ == '__main__':
+    main()
