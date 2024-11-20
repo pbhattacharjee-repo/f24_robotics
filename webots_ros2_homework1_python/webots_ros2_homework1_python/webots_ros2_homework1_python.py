@@ -44,31 +44,32 @@ class RandomWalk(Node):
         
         self.laser_forward = 0
         self.odom_data = 0
-        self.timer = self.create_timer(0.5, self.timer_callback)
+        self.timer = self.create_timer(0.1, self.timer_callback)  # Faster callback interval
         self.pose_saved = ''
         self.cmd = Twist()
         self.apriltag_detected = False
         self.apriltag_id = None
 
     def listener_callback1(self, msg1):
-        scan = msg1.ranges
+        # Clean lidar data by replacing invalid values with a maximum range
         self.scan_cleaned = []
-        for reading in scan:
-            if reading == float('Inf'):
-                self.scan_cleaned.append(3.5)
-            elif math.isnan(reading):
-                self.scan_cleaned.append(0.0)
+        for reading in msg1.ranges:
+            if reading == float('Inf') or math.isnan(reading) or reading <= 0.05:
+                self.scan_cleaned.append(3.5)  # Assume maximum range
             else:
                 self.scan_cleaned.append(reading)
 
+        # Log cleaned lidar data for debugging
+        self.get_logger().info(f"Cleaned Lidar Data (first 10): {self.scan_cleaned[:10]}")
+
     def listener_callback2(self, msg2):
+        # Log robot position from odometry
         position = msg2.pose.pose.position
         self.pose_saved = position
-        self.get_logger().info('Self position: {},{},{}'.format(
-            position.x, position.y, position.z))
+        self.get_logger().info(f'Self position: x={position.x}, y={position.y}, z={position.z}')
 
     def apriltag_callback(self, msg):
-        """Callback for AprilTag detections."""
+        # Handle AprilTag detections
         if not msg.detections:
             self.get_logger().info('No AprilTag detected.')
             return
@@ -76,8 +77,6 @@ class RandomWalk(Node):
         for detection in msg.detections:
             tag_id = detection.id
             centre = detection.centre
-            corners = detection.corners
-
             self.get_logger().info(
                 f'AprilTag Detected - ID: {tag_id}, Centre: [x: {centre.x}, y: {centre.y}]')
             self.apriltag_detected = True
@@ -85,43 +84,33 @@ class RandomWalk(Node):
 
     def timer_callback(self):
         if len(self.scan_cleaned) == 0:
-            self.turtlebot_moving = False
+            self.get_logger().info("No lidar data available!")
             return
-        
+
+        # Calculate distances for front, left, and right regions
+        front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
-        front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
 
-        #if self.apriltag_detected:
-            #self.cmd.linear.x = 0.0
-            #self.cmd.angular.z = 0.0
-            #self.publisher_.publish(self.cmd)
-            #self.get_logger().info(f'Stopping for detected AprilTag ID: {self.apriltag_id}')
-            #self.apriltag_detected = False  # Reset detection for subsequent detections
-            #return
+        # Log distances for debugging
+        self.get_logger().info(f"Front: {front_lidar_min}, Left: {left_lidar_min}, Right: {right_lidar_min}")
 
+        # Obstacle avoidance logic
         if front_lidar_min < SAFE_STOP_DISTANCE:
             self.cmd.linear.x = 0.0
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
-            self.get_logger().info('Stopping')
-            self.turtlebot_moving = False
-        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
+            self.get_logger().info('Stopping: Obstacle too close')
+        elif SAFE_STOP_DISTANCE <= front_lidar_min < LIDAR_AVOID_DISTANCE:
             self.cmd.linear.x = 0.07
-            if right_lidar_min > left_lidar_min:
-                self.cmd.angular.z = -0.3
-            else:
-                self.cmd.angular.z = 0.3
+            self.cmd.angular.z = -0.3 if right_lidar_min > left_lidar_min else 0.3
             self.publisher_.publish(self.cmd)
-            self.get_logger().info('Turning')
-            self.turtlebot_moving = True
+            self.get_logger().info('Turning: Avoiding obstacle')
         else:
             self.cmd.linear.x = 0.3
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
-            self.turtlebot_moving = True
-
-        self.get_logger().info('Distance of the obstacle: %f' % front_lidar_min)
+            self.get_logger().info('Moving Forward: Path is clear')
 
 def main(args=None):
     rclpy.init(args=args)
