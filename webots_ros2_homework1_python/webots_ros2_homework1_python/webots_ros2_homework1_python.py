@@ -3,7 +3,6 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from apriltag_msgs.msg import AprilTagDetectionArray
 from tf2_msgs.msg import TFMessage
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 import math
@@ -36,11 +35,11 @@ class RandomWalk(Node):
             '/odom',
             self.listener_callback2,
             QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
-        self.apriltag_detection_sub = self.create_subscription(
-            AprilTagDetectionArray,
-            '/detections',
-            self.apriltag_callback,
-            QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE))
+        #self.apriltag_detection_sub = self.create_subscription(
+            #AprilTagDetectionArray,
+            #'/detections',
+            #self.apriltag_callback,
+            #QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE))
         
         self.laser_forward = 0
         self.odom_data = 0
@@ -67,21 +66,21 @@ class RandomWalk(Node):
         self.get_logger().info('Self position: {},{},{}'.format(
             position.x, position.y, position.z))
 
-    def apriltag_callback(self, msg):
+    #def apriltag_callback(self, msg):
         """Callback for AprilTag detections."""
-        if not msg.detections:
-            self.get_logger().info('No AprilTag detected.')
-            return
+        #if not msg.detections:
+            #self.get_logger().info('No AprilTag detected.')
+            #return
 
-        for detection in msg.detections:
-            tag_id = detection.id
-            centre = detection.centre
-            corners = detection.corners
+        #for detection in msg.detections:
+            #tag_id = detection.id
+            #centre = detection.centre
+            #corners = detection.corners
 
-            self.get_logger().info(
-                f'AprilTag Detected - ID: {tag_id}, Centre: [x: {centre.x}, y: {centre.y}]')
-            self.apriltag_detected = True
-            self.apriltag_id = tag_id
+            #self.get_logger().info(
+                #f'AprilTag Detected - ID: {tag_id}, Centre: [x: {centre.x}, y: {centre.y}]')
+            #self.apriltag_detected = True
+            #self.apriltag_id = tag_id
 
     def timer_callback(self):
         if len(self.scan_cleaned) == 0:
@@ -92,13 +91,13 @@ class RandomWalk(Node):
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
 
-        if self.apriltag_detected:
-            self.cmd.linear.x = 0.0
-            self.cmd.angular.z = 0.0
-            self.publisher_.publish(self.cmd)
-            self.get_logger().info(f'Stopping for detected AprilTag ID: {self.apriltag_id}')
-            self.apriltag_detected = False  # Reset detection for subsequent detections
-            return
+        #if self.apriltag_detected:
+            #self.cmd.linear.x = 0.0
+            #self.cmd.angular.z = 0.0
+            #self.publisher_.publish(self.cmd)
+            #self.get_logger().info(f'Stopping for detected AprilTag ID: {self.apriltag_id}')
+            #self.apriltag_detected = False  # Reset detection for subsequent detections
+            #return
 
         if front_lidar_min < SAFE_STOP_DISTANCE:
             self.cmd.linear.x = 0.0
