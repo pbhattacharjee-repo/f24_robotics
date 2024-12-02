@@ -106,11 +106,19 @@ class RandomWalk(Node):
         if len(self.scan_cleaned) == 0:
             self.turtlebot_moving = False
             return
-        
+
         # Determine minimum distances for left, right, and front lidar scans
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
+
+        if self.apriltag_detected:
+            self.cmd.linear.x = 0.0
+            self.cmd.angular.z = 0.0
+            self.publisher_.publish(self.cmd)
+            self.get_logger().info(f'Stopping for detected AprilTag ID: {self.apriltag_id}')
+            self.apriltag_detected = False  # Reset detection for subsequent detections
+            return
 
         # Behavior based on lidar readings
         if front_lidar_min < SAFE_STOP_DISTANCE:
